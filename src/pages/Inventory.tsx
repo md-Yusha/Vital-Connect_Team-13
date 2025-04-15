@@ -1,5 +1,14 @@
-import React from 'react';
-import { Package, ArrowLeftRight, Search, BarChart3, Share2 } from 'lucide-react';
+import React from "react";
+import {
+  Package,
+  ArrowLeftRight,
+  Search,
+  BarChart3,
+  Share2,
+  Building2,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import InventoryManager from "../components/InventoryManager";
 
 const Inventory = () => {
   const hospitals = [
@@ -20,7 +29,7 @@ const Inventory = () => {
       location: "Eastside",
       availableItems: 189,
       status: "Connected",
-    }
+    },
   ];
 
   return (
@@ -28,12 +37,28 @@ const Inventory = () => {
       {/* Hero Section */}
       <div className="text-center mb-16">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Inventory Sharing Network
+          Inventory Management System
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Connect and share resources with healthcare facilities in your network.
-          Manage inventory efficiently and ensure optimal resource distribution.
+          Manage your clinic's inventory and connect with other healthcare
+          facilities in your network.
         </p>
+      </div>
+
+      {/* Register Clinic Button */}
+      <div className="mb-8 text-center">
+        <Link
+          to="/register-clinic"
+          className="inline-flex items-center px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+        >
+          <Building2 className="h-5 w-5 mr-2" />
+          Register Your Clinic
+        </Link>
+      </div>
+
+      {/* Inventory Manager */}
+      <div className="mb-16">
+        <InventoryManager />
       </div>
 
       {/* Search and Filter Section */}
@@ -88,7 +113,9 @@ const Inventory = () => {
       {/* Connected Hospitals Table */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Connected Facilities</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Connected Facilities
+          </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -115,13 +142,19 @@ const Inventory = () => {
               {hospitals.map((hospital, index) => (
                 <tr key={index}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{hospital.name}</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {hospital.name}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{hospital.location}</div>
+                    <div className="text-sm text-gray-500">
+                      {hospital.location}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{hospital.availableItems}</div>
+                    <div className="text-sm text-gray-900">
+                      {hospital.availableItems}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
