@@ -1,5 +1,23 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Building2, MapPin, Phone, Mail, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import { hospitalApi } from "../services/api";
+
+// Fix Leaflet icon issue
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+
+const DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+// Set default marker icon
+L.Marker.prototype.options.icon = DefaultIcon;
 
 interface ClinicFormData {
   clinicName: string;
@@ -9,11 +27,16 @@ interface ClinicFormData {
   zipCode: string;
   phoneNumber: string;
   email: string;
+  password: string;
+  confirmPassword: string;
   contactPerson: string;
   licenseNumber: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const RegisterClinic = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<ClinicFormData>({
     clinicName: "",
     address: "",
@@ -22,26 +45,70 @@ const RegisterClinic = () => {
     zipCode: "",
     phoneNumber: "",
     email: "",
+    password: "",
+    confirmPassword: "",
     contactPerson: "",
     licenseNumber: "",
+    latitude: null,
+    longitude: null,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would typically send the data to your backend
-    console.log("Clinic registration data:", formData);
-    // Reset form after submission
-    setFormData({
-      clinicName: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      phoneNumber: "",
-      email: "",
-      contactPerson: "",
-      licenseNumber: "",
-    });
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Map frontend field names to backend field names
+      const hospitalData = {
+        name: formData.clinicName.trim(),
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        zip_code: formData.zipCode.trim(),
+        phone_number: formData.phoneNumber.trim(),
+        email: formData.email.trim(),
+        contact_person: formData.contactPerson.trim(),
+        license_number: formData.licenseNumber.trim(),
+      };
+
+      // Send data to backend
+      const response = await hospitalApi.create(hospitalData);
+      console.log("Hospital registered successfully:", response.data);
+
+      // Show success message
+      setSuccess(true);
+
+      // Reset form after submission
+      setFormData({
+        clinicName: "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        phoneNumber: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        contactPerson: "",
+        licenseNumber: "",
+        latitude: null,
+        longitude: null,
+      });
+
+      // Redirect to inventory page after 2 seconds
+      setTimeout(() => {
+        navigate("/inventory");
+      }, 2000);
+    } catch (err) {
+      console.error("Error registering hospital:", err);
+      setError("Failed to register clinic. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,11 +280,28 @@ const RegisterClinic = () => {
           </div>
 
           <div className="mt-8">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg">
+                Clinic registered successfully! Redirecting to inventory page...
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+              disabled={isSubmitting}
+              className={`w-full px-6 py-3 bg-teal-600 text-white rounded-lg transition-colors ${
+                isSubmitting
+                  ? "opacity-70 cursor-not-allowed"
+                  : "hover:bg-teal-700"
+              }`}
             >
-              Register Clinic
+              {isSubmitting ? "Registering..." : "Register Clinic"}
             </button>
           </div>
         </form>

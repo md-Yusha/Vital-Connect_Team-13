@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -10,6 +10,8 @@ import {
   Download,
 } from "lucide-react";
 import { usePDF } from "react-to-pdf";
+import { inventoryApi, hospitalApi } from "../services/api";
+import authService from "../services/auth";
 
 interface InventoryItem {
   id: string;
@@ -18,6 +20,7 @@ interface InventoryItem {
   category: string;
   description: string;
   price: number;
+  hospital: string;
 }
 
 interface CartItem extends InventoryItem {
@@ -36,59 +39,75 @@ interface PaymentInfo {
   transactionId?: string;
 }
 
-const sampleItems: InventoryItem[] = [
-  {
-    id: "1",
-    name: "Medical Gloves (Box of 100)",
-    quantity: 50,
-    category: "Personal Protective Equipment",
-    description: "Latex-free medical examination gloves",
-    price: 25.99,
-  },
-  {
-    id: "2",
-    name: "Surgical Masks (Box of 50)",
-    quantity: 30,
-    category: "Personal Protective Equipment",
-    description: "3-ply disposable surgical masks",
-    price: 19.99,
-  },
-  {
-    id: "3",
-    name: "Alcohol Wipes (Box of 200)",
-    quantity: 25,
-    category: "Cleaning Supplies",
-    description: "70% isopropyl alcohol wipes",
-    price: 15.99,
-  },
-  {
-    id: "4",
-    name: "Bandages (Box of 100)",
-    quantity: 40,
-    category: "First Aid",
-    description: "Assorted size adhesive bandages",
-    price: 12.99,
-  },
-  {
-    id: "5",
-    name: "Thermometer",
-    quantity: 15,
-    category: "Medical Equipment",
-    description: "Digital oral thermometer",
-    price: 29.99,
-  },
-  {
-    id: "6",
-    name: "Blood Pressure Monitor",
-    quantity: 8,
-    category: "Medical Equipment",
-    description: "Digital automatic blood pressure monitor",
-    price: 49.99,
-  },
-];
+interface Hospital {
+  id: string;
+  name: string;
+}
 
 const InventoryManager = () => {
-  const [items, setItems] = useState<InventoryItem[]>(sampleItems);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [, setHospitals] = useState<Hospital[]>([]);
+  const [selectedHospital, setSelectedHospital] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
+  const [, setIsLoggedIn] = useState(false);
+
+  // Check if user is logged in
+  useEffect(() => {
+    setIsLoggedIn(authService.isLoggedIn());
+  }, []);
+
+  // Fetch hospitals and inventory items
+  useEffect(() => {
+    const fetchHospitals = async () => {
+      try {
+        // Check if user is logged in
+        const hospital = localStorage.getItem("hospital");
+        if (hospital) {
+          const hospitalData = JSON.parse(hospital);
+          setHospitals([hospitalData]);
+          setSelectedHospital(hospitalData.id);
+          setIsLoggedIn(true);
+        } else {
+          // If not logged in, fetch all hospitals
+          const response = await hospitalApi.getAll();
+          setHospitals(response.data.results || []);
+
+          // Select the first hospital by default if available
+          if (response.data.results && response.data.results.length > 0) {
+            setSelectedHospital(response.data.results[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching hospitals:", err);
+        setError("Failed to load hospitals. Please try again.");
+      }
+    };
+
+    fetchHospitals();
+  }, []);
+
+  // Fetch inventory items when selected hospital changes
+  useEffect(() => {
+    const fetchInventoryItems = async () => {
+      if (!selectedHospital) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await hospitalApi.getInventory(selectedHospital);
+        setItems(response.data || []);
+      } catch (err) {
+        console.error("Error fetching inventory items:", err);
+        setError("Failed to load inventory items. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInventoryItems();
+  }, [selectedHospital]);
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -111,29 +130,55 @@ const InventoryManager = () => {
     category: "",
     description: "",
     price: 0,
+    hospital: "",
   });
 
-  const handleAddItem = () => {
-    if (newItem.name && newItem.quantity > 0) {
-      const item: InventoryItem = {
-        ...newItem,
-        id: Date.now().toString(),
-      };
-      setItems([...items, item]);
-      setNewItem({
-        name: "",
-        quantity: 0,
-        category: "",
-        description: "",
-        price: 0,
-      });
-      setIsAdding(false);
+  const handleAddItem = async () => {
+    if (newItem.name && newItem.quantity > 0 && selectedHospital) {
+      try {
+        // Create inventory item in the backend
+        const itemData = {
+          ...newItem,
+          hospital: selectedHospital,
+        };
+
+        const response = await inventoryApi.create(itemData);
+        const newItemFromServer = response.data;
+
+        // Add the new item to the local state
+        setItems([...items, newItemFromServer]);
+
+        // Reset form
+        setNewItem({
+          name: "",
+          quantity: 0,
+          category: "",
+          description: "",
+          price: 0,
+          hospital: "",
+        });
+        setIsAdding(false);
+      } catch (err) {
+        console.error("Error adding inventory item:", err);
+        alert("Failed to add inventory item. Please try again.");
+      }
+    } else {
+      alert("Please fill in all required fields.");
     }
   };
 
-  const handleDeleteItem = (id: string) => {
-    setItems(items.filter((item) => item.id !== id));
-    setCart(cart.filter((item) => item.id !== id));
+  const handleDeleteItem = async (id: string) => {
+    try {
+      // Delete item from backend
+      await inventoryApi.delete(id);
+
+      // Update local state
+      setItems(items.filter((item) => item.id !== id));
+      setCart(cart.filter((item) => item.id !== id));
+    } catch (err) {
+      console.error("Error deleting inventory item:", err);
+      alert("Failed to delete inventory item. Please try again.");
+    }
   };
 
   const handleAddToCart = (item: InventoryItem) => {
@@ -168,10 +213,15 @@ const InventoryManager = () => {
   };
 
   const calculateTotal = () => {
-    return cart.reduce(
-      (total, item) => total + item.price * item.selectedQuantity,
-      0
-    );
+    return cart.reduce((total, item) => {
+      const price =
+        item.price !== undefined && item.price !== null
+          ? isNaN(Number(item.price))
+            ? 0
+            : Number(item.price)
+          : 0;
+      return total + price * item.selectedQuantity;
+    }, 0);
   };
 
   // Filter items based on search query
@@ -354,7 +404,15 @@ const InventoryManager = () => {
                   <div>
                     <h4 className="font-medium">{item.name}</h4>
                     <p className="text-sm text-gray-500">
-                      ${item.price.toFixed(2)} each
+                      $
+                      {item.price !== undefined && item.price !== null
+                        ? typeof item.price === "number"
+                          ? item.price.toFixed(2)
+                          : isNaN(Number(item.price))
+                          ? "0.00"
+                          : Number(item.price).toFixed(2)
+                        : "0.00"}{" "}
+                      each
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
@@ -600,10 +658,24 @@ const InventoryManager = () => {
                             {item.selectedQuantity}
                           </td>
                           <td className="py-3 px-4 text-right text-gray-700">
-                            ${item.price.toFixed(2)}
+                            $
+                            {item.price !== undefined && item.price !== null
+                              ? typeof item.price === "number"
+                                ? item.price.toFixed(2)
+                                : isNaN(Number(item.price))
+                                ? "0.00"
+                                : Number(item.price).toFixed(2)
+                              : "0.00"}
                           </td>
                           <td className="py-3 px-4 text-right text-gray-700">
-                            ${(item.price * item.selectedQuantity).toFixed(2)}
+                            $
+                            {(
+                              (item.price !== undefined && item.price !== null
+                                ? isNaN(Number(item.price))
+                                  ? 0
+                                  : Number(item.price)
+                                : 0) * item.selectedQuantity
+                            ).toFixed(2)}
                           </td>
                         </tr>
                       ))}
@@ -734,7 +806,14 @@ const InventoryManager = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
-                    ${item.price.toFixed(2)}
+                    $
+                    {item.price !== undefined && item.price !== null
+                      ? typeof item.price === "number"
+                        ? item.price.toFixed(2)
+                        : isNaN(Number(item.price))
+                        ? "0.00"
+                        : Number(item.price).toFixed(2)
+                      : "0.00"}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
