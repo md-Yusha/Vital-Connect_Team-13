@@ -1,26 +1,49 @@
 # Vital Connect
 
-A healthcare inventory management system that allows hospitals and clinics to manage their inventory and connect with other healthcare facilities.
+A comprehensive healthcare platform that connects patients with healthcare facilities, streamlines medical inventory management, and facilitates clinic registration and administration.
+
+![Vital Connect](public/logo.png)
 
 ## Features
 
-- Hospital/Clinic registration
-- Inventory management
-- Transaction tracking
-- Connected facilities network
-- Statistics and reporting
+- **Hospital/Clinic Registration**: Interactive map-based registration system
+- **Nearby Hospitals Finder**: Location-based healthcare facility search
+- **Inventory Management**: Track and manage medical supplies efficiently
+- **Transaction Tracking**: Monitor supply movement between facilities
+- **Connected Facilities Network**: Collaborate with other healthcare providers
+- **Statistics and Reporting**: Data-driven insights for better decision making
 
 ## Tech Stack
 
-- **Frontend**: React, TypeScript, Tailwind CSS
+- **Frontend**:
+  - React 18.3.1
+  - TypeScript
+  - Tailwind CSS
+  - Leaflet for interactive maps
+  - React Router 6.30.0
+  - Lucide React for icons
 - **Backend**: Django, Django REST Framework
 - **Database**: SQLite (development), PostgreSQL (production)
 
 ## Project Structure
 
 - `/src` - React frontend code
+  - `/components` - Reusable UI components
+  - `/pages` - Page components
+  - `/services` - API and service functions
 - `/backend` - Django backend code
 - `/venv` - Python virtual environment
+
+## Key Components
+
+### Custom Map Components
+
+We've implemented custom map components using Leaflet to ensure optimal performance and compatibility:
+
+- **CustomMap**: A simple map component for location selection
+- **CustomMapWithMarkers**: An enhanced map component for displaying multiple locations
+
+These components provide a seamless mapping experience for both clinic registration and hospital finding features.
 
 ## Setup Instructions
 
